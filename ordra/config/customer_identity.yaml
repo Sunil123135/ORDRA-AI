@@ -1,0 +1,16 @@
+# Customer identity mapping: email/domain → customer_key and SAP sold-to/ship-to.
+# Auditable, demo-friendly, production-safe. Do not hardcode emails in Python.
+
+customers:
+  - customer_key: QUIDELORTHO_INTERNAL
+    email_addresses:
+      - sunil.lalwani@quidelortho.com
+    allowed_domains:
+      - quidelortho.com
+
+    sap_mapping:
+      sold_to: "1040402"
+      ship_to: "1040402"
+
+    trust_tier_override: GOLD   # optional for demo
+    auto_post_enabled: true      # optional

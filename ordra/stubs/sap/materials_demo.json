@@ -1,0 +1,18 @@
+[
+  {
+    "material": "MAT-100001",
+    "description": "Reagent Pack A",
+    "uom": "EA",
+    "material_group": "REAGENTS",
+    "plant": "IN01",
+    "status": "ACTIVE"
+  },
+  {
+    "material": "MAT-200010",
+    "description": "Control Kit B",
+    "uom": "EA",
+    "material_group": "CONSUMABLES",
+    "plant": "IN01",
+    "status": "ACTIVE"
+  }
+]

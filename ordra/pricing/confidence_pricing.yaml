@@ -1,0 +1,17 @@
+pricing_model: "confidence_band"
+
+bands:
+  - min_confidence: 0.00
+    max_confidence: 0.84
+    price_per_order: 0.00
+    description: "HITL required – no charge"
+
+  - min_confidence: 0.85
+    max_confidence: 0.94
+    price_per_order: 0.50
+    description: "Partial automation"
+
+  - min_confidence: 0.95
+    max_confidence: 1.00
+    price_per_order: 1.50
+    description: "AUTO_POST premium"

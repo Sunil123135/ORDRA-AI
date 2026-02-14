@@ -1,0 +1,36 @@
+version: "1.0"
+
+credit_policy:
+  hard_block:
+    - condition: "credit_status == 'BLOCKED'"
+      action: "CS_REVIEW"
+      reason: "Customer credit is blocked in SAP"
+    - condition: "credit_exposure > credit_limit"
+      action: "CS_REVIEW"
+      reason: "Credit exposure exceeds limit"
+
+compliance_policy:
+  hard_block:
+    - condition: "export_control_flag == true"
+      action: "CS_REVIEW"
+      reason: "Export control / trade compliance risk"
+    - condition: "sanctioned_country == true"
+      action: "CS_REVIEW"
+      reason: "Sanctioned country detected"
+
+material_trust_policy:
+  allowlist:
+    trusted_material_groups:
+      - "REAGENTS"
+      - "CONSUMABLES"
+    trusted_plants:
+      - "IN01"
+      - "IN02"
+  soft_block:
+    - condition: "material_trust_score < 0.7"
+      action: "CS_REVIEW"
+      reason: "Material trust score below threshold"
+
+confidence_policy:
+  auto_post_threshold: 0.95
+  downgrade_threshold: 0.85

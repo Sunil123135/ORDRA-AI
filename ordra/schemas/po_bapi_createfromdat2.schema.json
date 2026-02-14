@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ordra://schemas/po_bapi_createfromdat2.schema.json",
+  "title": "ORDRA PO Extraction Schema aligned to BAPI_SALESORDER_CREATEFROMDAT2",
+  "type": "object",
+  "required": ["ORDER_HEADER_IN", "ORDER_PARTNERS", "ORDER_ITEMS_IN", "ORDER_SCHEDULES_IN"],
+  "additionalProperties": false,
+
+  "properties": {
+    "meta": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "source_email": { "type": "string" },
+        "internet_message_id": { "type": "string" },
+        "po_file_name": { "type": "string" },
+        "extraction_confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+
+    "ORDER_HEADER_IN": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["DOC_TYPE", "SALES_ORG", "DISTR_CHAN", "DIVISION", "PURCH_NO_C"],
+      "properties": {
+        "DOC_TYPE": { "type": "string", "minLength": 1, "description": "e.g., OR, ZOR" },
+        "SALES_ORG": { "type": "string", "minLength": 1, "description": "VKORG" },
+        "DISTR_CHAN": { "type": "string", "minLength": 1, "description": "VTWEG" },
+        "DIVISION": { "type": "string", "minLength": 1, "description": "SPART" },
+
+        "PURCH_NO_C": { "type": "string", "minLength": 1, "description": "Customer PO number" },
+        "REQ_DATE_H": { "type": "string", "description": "YYYY-MM-DD (will be mapped to SAP date)" },
+
+        "CURRENCY": { "type": "string", "minLength": 3, "maxLength": 3 },
+        "PMNTTRMS": { "type": "string", "description": "Payment terms" },
+        "INCOTERMS1": { "type": "string" },
+        "INCOTERMS2": { "type": "string" },
+
+        "REF_DOC": { "type": "string", "description": "Optional external ref" }
+      }
+    },
+
+    "ORDER_PARTNERS": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["PARTN_ROLE", "PARTN_NUMB"],
+        "properties": {
+          "PARTN_ROLE": { "type": "string", "minLength": 2, "description": "AG sold-to, WE ship-to, RE payer, RG bill-to" },
+          "PARTN_NUMB": { "type": "string", "minLength": 1, "description": "KUNNR" },
+
+          "NAME": { "type": "string", "description": "One-time name (if enabled)"},
+          "STREET": { "type": "string" },
+          "CITY": { "type": "string" },
+          "REGION": { "type": "string" },
+          "POSTL_CODE": { "type": "string" },
+          "COUNTRY": { "type": "string" }
+        }
+      }
+    },
+
+    "ORDER_ITEMS_IN": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ITM_NUMBER", "MATERIAL"],
+        "properties": {
+          "ITM_NUMBER": { "type": "string", "pattern": "^[0-9]{6}$", "description": "000010, 000020..." },
+          "MATERIAL": { "type": "string", "minLength": 1, "description": "MATNR (SAP material)" },
+
+          "PLANT": { "type": "string", "description": "WERKS (optional, can default)" },
+          "TARGET_QTY": { "type": "number", "minimum": 0, "description": "Optional if schedule carries qty" },
+          "TARGET_QU": { "type": "string", "description": "UoM (optional if schedule carries)" },
+
+          "CUST_MAT35": { "type": "string", "description": "Customer material (if used)" },
+          "SHORT_TEXT": { "type": "string", "description": "Item text" }
+        }
+      }
+    },
+
+    "ORDER_SCHEDULES_IN": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ITM_NUMBER", "SCHED_LINE", "REQ_QTY"],
+        "properties": {
+          "ITM_NUMBER": { "type": "string", "pattern": "^[0-9]{6}$" },
+          "SCHED_LINE": { "type": "string", "pattern": "^[0-9]{4}$", "description": "0001" },
+          "REQ_QTY": { "type": "number", "minimum": 0 },
+          "REQ_DATE": { "type": "string", "description": "YYYY-MM-DD (optional)" }
+        }
+      }
+    },
+
+    "ORDER_CONDITIONS_IN": {
+      "type": "array",
+      "description": "Optional: if you want to pass PO pricing into SAP conditions",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ITM_NUMBER", "COND_TYPE"],
+        "properties": {
+          "ITM_NUMBER": { "type": "string", "pattern": "^[0-9]{6}$" },
+          "COND_TYPE": { "type": "string", "description": "PR00, K007..." },
+          "COND_VALUE": { "type": "number" },
+          "CURRENCY": { "type": "string", "minLength": 3, "maxLength": 3 }
+        }
+      }
+    },
+
+    "extracted_ship_to_address": {
+      "type": "object",
+      "description": "For audit / comparison; SAP master is source-of-truth",
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "street": { "type": "string" },
+        "city": { "type": "string" },
+        "state": { "type": "string" },
+        "postal_code": { "type": "string" },
+        "country": { "type": "string" }
+      }
+    }
+  }
+}

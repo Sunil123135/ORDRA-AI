@@ -1,0 +1,255 @@
+dag_name: ordra_ai_job_v1
+
+defaults:
+  retry:
+    max_attempts: 2
+    backoff_seconds: [1, 3]
+  timeout_seconds: 30
+
+nodes:
+  - id: mailbox_search
+    type: tool
+    handler: mailbox.o365.search
+    deps: []
+    retry: { max_attempts: 2, backoff_seconds: [1, 2] }
+    outputs: [email_candidates]
+
+  - id: mailbox_fetch
+    type: tool
+    handler: mailbox.o365.fetch
+    deps: [mailbox_search]
+    retry: { max_attempts: 2, backoff_seconds: [1, 2] }
+    outputs: [email_message]
+
+  - id: resolve_customer_identity
+    type: tool
+    handler: identity.resolve_customer
+    deps: [mailbox_fetch]
+    outputs: [intake_context]
+
+  - id: mailbox_download_attachments
+    type: tool
+    handler: mailbox.o365.attachments
+    deps: [mailbox_fetch]
+    retry: { max_attempts: 2, backoff_seconds: [1, 2] }
+    outputs: [pdf_files, excel_files]
+
+  - id: ingest_email
+    type: tool
+    handler: email.fetch_and_normalize
+    deps: [mailbox_download_attachments]
+    retry: { max_attempts: 2, backoff_seconds: [1, 3] }
+    timeout_seconds: 20
+    outputs: [email_message, attachments]
+
+  - id: detect_customer
+    type: agent
+    handler: agents.intake_agent
+    deps: [ingest_email, resolve_customer_identity]
+    outputs: [intake_context]
+
+  - id: doc_quality_router
+    type: tool
+    handler: documents.doc_quality_router
+    deps: [ingest_email]
+    outputs: [doc_quality, preprocess_plan]
+
+  - id: extract_pdf_text
+    type: tool
+    handler: documents.pdf_text.extract
+    deps: [ingest_email]
+    when: "has_pdf_attachment == true"
+    retry: { max_attempts: 1, backoff_seconds: [1] }
+    outputs: [pdf_text_chunks]
+
+  - id: ocr_scan
+    type: tool
+    handler: documents.ocr.run
+    deps: [ingest_email, doc_quality_router]
+    when: "pdf_is_scanned_or_low_text == true"
+    retry: { max_attempts: 1, backoff_seconds: [2] }
+    timeout_seconds: 90
+    outputs: [ocr_text_chunks]
+
+  - id: parse_excel
+    type: tool
+    handler: documents.excel.parse
+    deps: [ingest_email]
+    when: "has_excel_attachment == true"
+    retry: { max_attempts: 1, backoff_seconds: [1] }
+    outputs: [excel_tables]
+
+  - id: retrieve_episode_recipes
+    type: tool
+    handler: memory.episode.retrieve
+    deps: [detect_customer]
+    retry: { max_attempts: 1 }
+    outputs: [episode_recipes]
+
+  - id: retrieve_skills
+    type: tool
+    handler: skills.retrieve_for_context
+    deps: [detect_customer, doc_quality_router]
+    retry: { max_attempts: 1, backoff_seconds: [1] }
+    outputs: [skills_text]
+
+  - id: retrieve_template_memory
+    type: tool
+    handler: memory.faiss.retrieve_layout_hints
+    deps: [detect_customer, extract_pdf_text, ocr_scan]
+    retry: { max_attempts: 1, backoff_seconds: [1] }
+    outputs: [layout_hints]
+
+  - id: llm_extract_schema
+    type: tool
+    handler: llm.openai.extract_po_schema
+    deps: [retrieve_episode_recipes, retrieve_template_memory, retrieve_skills, doc_quality_router, extract_pdf_text, ocr_scan, parse_excel]
+    retry: { max_attempts: 2, backoff_seconds: [2, 5] }
+    timeout_seconds: 60
+    outputs: [extracted_order]
+
+  - id: verify_extraction
+    type: agent
+    handler: agents.verifier_extraction
+    deps: [llm_extract_schema, detect_customer, retrieve_template_memory]
+    retry: { max_attempts: 1, backoff_seconds: [1] }
+    outputs: [extraction_verdict]
+
+  - id: refine_extraction
+    type: tool
+    handler: llm.openai.refine_po_schema
+    deps: [verify_extraction, llm_extract_schema]
+    when: "extraction_verdict.needs_refine == true"
+    retry: { max_attempts: 1, backoff_seconds: [2] }
+    timeout_seconds: 60
+    outputs: [extracted_order]
+
+  - id: extraction_result
+    type: tool
+    handler: tools.extraction_result
+    deps: [verify_extraction, refine_extraction]
+    outputs: [extracted_order]
+
+  - id: resolve_aliases
+    type: tool
+    handler: memory.faiss.resolve_aliases
+    deps: [extraction_result, detect_customer]
+    retry: { max_attempts: 1, backoff_seconds: [1] }
+    outputs: [alias_resolution]
+
+  # Parallel SAP validations (use extraction_result so refined extraction is used when present)
+  - id: sap_validate_customer
+    type: tool
+    handler: sap.validate_customer
+    deps: [extraction_result, detect_customer]
+    retry: { max_attempts: 2, backoff_seconds: [2, 6] }
+    outputs: [customer_validation]
+
+  - id: sap_validate_materials
+    type: tool
+    handler: sap.validate_materials
+    deps: [extraction_result, resolve_aliases]
+    retry: { max_attempts: 2, backoff_seconds: [2, 6] }
+    outputs: [material_validation]
+
+  - id: sap_validate_pricing
+    type: tool
+    handler: sap.validate_pricing
+    deps: [extraction_result, detect_customer]
+    retry: { max_attempts: 2, backoff_seconds: [2, 6] }
+    outputs: [pricing_validation]
+
+  - id: sap_validate_credit
+    type: tool
+    handler: sap.validate_credit
+    deps: [extraction_result, detect_customer]
+    retry: { max_attempts: 2, backoff_seconds: [2, 6] }
+    outputs: [credit_validation]
+
+  - id: sap_validate_atp
+    type: tool
+    handler: sap.validate_atp
+    deps: [extraction_result, detect_customer]
+    retry: { max_attempts: 1, backoff_seconds: [2] }
+    outputs: [atp_validation]
+
+  - id: aggregate_validation
+    type: agent
+    handler: agents.validation_agent
+    deps:
+      - sap_validate_customer
+      - sap_validate_materials
+      - sap_validate_pricing
+      - sap_validate_credit
+      - sap_validate_atp
+    outputs: [validated_order]
+
+  - id: policy_evaluate
+    type: tool
+    handler: policies.evaluate
+    deps: [aggregate_validation]
+    retry: { max_attempts: 1 }
+    outputs: [policy_violations]
+
+  - id: trust_evaluate
+    type: tool
+    handler: trust.evaluate
+    deps: [aggregate_validation]
+    retry: { max_attempts: 1 }
+    outputs: [trust_tier, trust_clean_count]
+
+  - id: decide_action
+    type: agent
+    handler: agents.decision_agent
+    deps: [aggregate_validation, policy_evaluate, trust_evaluate]
+    outputs: [decision, hitl_task]
+
+  - id: verify_decision
+    type: agent
+    handler: agents.verifier_decision
+    deps: [decide_action, aggregate_validation]
+    retry: { max_attempts: 1 }
+    outputs: [decision, decision_verdict]
+
+  - id: hitl_gate
+    type: tool
+    handler: hitl.create_task_if_needed
+    deps: [verify_decision]
+    when: "decision.action in ['CS_REVIEW','ASK_CUSTOMER','HOLD']"
+    retry: { max_attempts: 1, backoff_seconds: [1] }
+    outputs: [hitl_task_id]
+
+  - id: build_sap_preview
+    type: tool
+    handler: sap.build_bapi_preview
+    deps: [aggregate_validation]
+    retry: { max_attempts: 1 }
+    outputs: [extracted_bapi, sap_bapi_payload]
+
+  - id: sap_create_order
+    type: tool
+    handler: sap.create_sales_order
+    deps: [verify_decision]
+    when: "decision.action == 'AUTO_POST' and decision.safe_to_post == true"
+    retry: { max_attempts: 1, backoff_seconds: [2] }
+    outputs: [sap_order_result]
+
+  - id: finalize_audit
+    type: agent
+    handler: agents.audit_agent
+    deps: [verify_decision, hitl_gate, sap_create_order]
+    outputs: [audit_record, decision_deck]
+
+  - id: mailbox_route
+    type: tool
+    handler: mailbox.o365.route
+    deps: [finalize_audit]
+    retry: { max_attempts: 1 }
+    outputs: [mailbox_routed]
+
+  - id: save_episode
+    type: tool
+    handler: memory.episode.save
+    deps: [finalize_audit]
+    retry: { max_attempts: 1, backoff_seconds: [1] }
+    outputs: [episode_saved]

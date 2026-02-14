@@ -1,0 +1,26 @@
+[TASK]
+You must fix the extracted purchase order JSON to address verifier critique.
+Return ONLY valid JSON matching the schema.
+
+[VERIFIER CRITIQUE]
+{{ critique }}
+
+[ORIGINAL EXTRACTED JSON]
+{{ original_extracted_order_json }}
+
+[EMAIL BODY]
+{{ email_body }}
+
+[PDF TEXT]
+{{ pdf_text }}
+
+[OCR TEXT]
+{{ ocr_text }}
+
+[EXCEL TABLES]
+{{ excel_tables }}
+
+[CONSTRAINTS]
+- Do not hallucinate. If unknown, set value=null and explain uncertainty_reason.
+- Provide evidence spans wherever possible.
+- Keep line_items accurate: no invented rows.

@@ -1,0 +1,11 @@
+{
+  "customer_code": "1040402",
+  "currency": "INR",
+  "conditions": [
+    { "material": "MAT-100001", "condition_type": "PR00", "price": 1250.0 },
+    { "material": "MAT-200010", "condition_type": "PR00", "price": 2100.0 }
+  ],
+  "discounts": [
+    { "condition_type": "K007", "percent": 0.0 }
+  ]
+}

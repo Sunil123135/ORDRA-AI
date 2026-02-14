@@ -1,0 +1,15 @@
+decay_rules:
+  - trigger: "AUTO_POST_ERROR"
+    penalty: 5
+    description: "SAP posting failed after AUTO_POST"
+
+  - trigger: "HITL_OVERRIDE"
+    penalty: 2
+    description: "CS override required after auto decision"
+
+  - trigger: "CUSTOMER_COMPLAINT"
+    penalty: 10
+    description: "Customer reported incorrect order"
+
+floor:
+  minimum_score: 0

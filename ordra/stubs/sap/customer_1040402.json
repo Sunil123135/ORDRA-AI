@@ -1,0 +1,29 @@
+{
+  "customer_code": "1040402",
+  "name1": "QuidelOrtho Demo Customer",
+  "country": "IN",
+  "region": "TG",
+  "city": "Hyderabad",
+  "postal_code": "500081",
+  "sales_area": {
+    "sales_org": "IN01",
+    "dist_channel": "10",
+    "division": "00"
+  },
+  "partner_functions": {
+    "sold_to": "1040402",
+    "ship_to": "1040402",
+    "payer": "1040402",
+    "bill_to": "1040402"
+  },
+  "shipping": {
+    "shipping_condition": "01",
+    "route": "IN-HYD",
+    "incoterms": "CPT",
+    "incoterms_location": "Hyderabad"
+  },
+  "tax": {
+    "gstin": "36AAAAA0000A1Z5",
+    "tax_jurisdiction": "IN-TG-HYD"
+  }
+}

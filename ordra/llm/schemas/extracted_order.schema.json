@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExtractedOrder",
+  "type": "object",
+  "required": ["po_number", "po_date", "sold_to", "ship_to", "line_items"],
+  "properties": {
+    "po_number": { "$ref": "#/definitions/fieldValue" },
+    "po_date": { "$ref": "#/definitions/fieldValue" },
+    "sold_to": { "$ref": "#/definitions/fieldValue" },
+    "ship_to": { "$ref": "#/definitions/fieldValue" },
+    "payer": { "$ref": "#/definitions/fieldValue" },
+    "incoterms": { "$ref": "#/definitions/fieldValue" },
+    "payment_terms": { "$ref": "#/definitions/fieldValue" },
+    "requested_delivery_date": { "$ref": "#/definitions/fieldValue" },
+    "shipping_condition": { "$ref": "#/definitions/fieldValue" },
+    "header_notes": { "$ref": "#/definitions/fieldValue" },
+    "line_items": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/lineItem" }
+    }
+  },
+  "definitions": {
+    "evidenceSpan": {
+      "type": "object",
+      "required": ["source", "text"],
+      "properties": {
+        "source": { "type": "string", "enum": ["email_body", "pdf_text", "ocr_text", "excel_sheet"] },
+        "file_id": { "type": "string" },
+        "page": { "type": "integer", "minimum": 0 },
+        "bbox": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "text": { "type": "string", "minLength": 1 }
+      }
+    },
+    "fieldValue": {
+      "type": "object",
+      "required": ["confidence", "evidence"],
+      "properties": {
+        "value": { "type": ["string", "null"] },
+        "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+        "evidence": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/evidenceSpan" }
+        },
+        "uncertainty_reason": { "type": ["string", "null"] }
+      }
+    },
+    "lineItem": {
+      "type": "object",
+      "required": ["line_no", "customer_material", "description", "quantity", "uom", "unit_price", "currency"],
+      "properties": {
+        "line_no": { "type": "integer", "minimum": 1 },
+        "customer_material": { "$ref": "#/definitions/fieldValue" },
+        "description": { "$ref": "#/definitions/fieldValue" },
+        "quantity": { "$ref": "#/definitions/fieldValue" },
+        "uom": { "$ref": "#/definitions/fieldValue" },
+        "unit_price": { "$ref": "#/definitions/fieldValue" },
+        "currency": { "$ref": "#/definitions/fieldValue" },
+        "requested_delivery_date": { "$ref": "#/definitions/fieldValue" }
+      }
+    }
+  }
+}

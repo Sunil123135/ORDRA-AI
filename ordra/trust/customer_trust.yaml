@@ -1,0 +1,14 @@
+tiers:
+  BRONZE:
+    min_clean_episodes: 0
+    auto_post_allowed: false
+
+  SILVER:
+    min_clean_episodes: 5
+    auto_post_allowed: true
+    max_confidence_required: 0.90
+
+  GOLD:
+    min_clean_episodes: 20
+    auto_post_allowed: true
+    max_confidence_required: 0.85
